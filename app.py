@@ -1,52 +1,47 @@
 import streamlit as st
-import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-from spotipy.cache_handler import CacheHandler
-
-
-class StreamlitCacheHandler(CacheHandler):
-    def __init__(self, session_key="token_info"):
-        self.session_key = session_key
-
-    def get_cached_token(self):
-        return st.session_state.get(self.session_key)
-
-    def save_token_to_cache(self, token_info):
-        st.session_state[self.session_key] = token_info
-
+import spotipy
 
 st.set_page_config(page_title="Spotify OAuth Test")
 
-# --- Create OAuth object ONCE ---
-
+# --- Session state ---
 if "token_info" not in st.session_state:
     st.session_state.token_info = None
 
-cache_handler = StreamlitCacheHandler()
+# --- Create OAuth object ONCE ---
+if "oauth" not in st.session_state:
+    st.session_state.oauth = SpotifyOAuth(
+        client_id=st.secrets["spotify"]["SPOTIFY_CLIENT_ID"],
+        client_secret=st.secrets["spotify"]["SPOTIFY_CLIENT_SECRET"],
+        redirect_uri=st.secrets["spotify"]["SPOTIFY_REDIRECT_URI"],
+        scope="user-top-read",
+        cache_path=None,  # avoid shared token issues
+        show_dialog=True
+    )
 
-# OAuth Object
-oauth = SpotifyOAuth(
-    client_id=st.secrets["spotify"]["SPOTIFY_CLIENT_ID"],
-    client_secret=st.secrets["spotify"]["SPOTIFY_CLIENT_SECRET"],
-    redirect_uri=st.secrets["spotify"]["SPOTIFY_REDIRECT_URI"],
-    scope="user-top-read",
-    cache_handler=cache_handler,  # important for multi-user apps
-    show_dialog=True,
-)
+oauth = st.session_state.oauth
 
+# --- Handle redirect from Spotify ---
+query_params = st.query_params
 
+if "code" in query_params and st.session_state.token_info is None:
+    code = query_params["code"][0]  # query_params returns a list
+    token_info = oauth.get_access_token(code, as_dict=True)
+    st.session_state.token_info = token_info
+
+    # Clear query params so this block doesn't run again
+    st.experimental_set_query_params()
+    st.experimental_rerun()
 
 # --- Require login ---
-sp = spotipy.Spotify(auth_manager=oauth)
-
-token = oauth.get_cached_token()
-if not token:
+if st.session_state.token_info is None:
     auth_url = oauth.get_authorize_url()
     st.markdown("## 🎧 Spotify Login Required")
     st.markdown(f"[Click here to log in with Spotify]({auth_url})")
     st.stop()
 
-# --- Logged in (THIS is the key change) ---
+# --- Logged in ---
+sp = spotipy.Spotify(auth=st.session_state.token_info["access_token"])
 user = sp.current_user()
 
 st.success("✅ Logged in!")
