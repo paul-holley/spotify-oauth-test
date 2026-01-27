@@ -13,7 +13,7 @@ oauth = SpotifyOAuth(
     client_id=st.secrets["spotify"]["SPOTIFY_CLIENT_ID"],
     client_secret=st.secrets["spotify"]["SPOTIFY_CLIENT_SECRET"],
     redirect_uri=st.secrets["spotify"]["SPOTIFY_REDIRECT_URI"],
-    scope="user-read-top",
+    scope="user-top-read",
     cache_path=None,  # prevents shared logins
     show_dialog=True,
 )
