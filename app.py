@@ -4,46 +4,35 @@ from spotipy.oauth2 import SpotifyOAuth
 
 st.set_page_config(page_title="Spotify OAuth Test")
 
-# --- Initialize session state ---
-if "token_info" not in st.session_state:
-    st.session_state.token_info = None
-
-# --- Create OAuth object ---
+# --- Create OAuth object ONCE ---
 oauth = SpotifyOAuth(
     client_id=st.secrets["spotify"]["SPOTIFY_CLIENT_ID"],
     client_secret=st.secrets["spotify"]["SPOTIFY_CLIENT_SECRET"],
     redirect_uri=st.secrets["spotify"]["SPOTIFY_REDIRECT_URI"],
     scope="user-top-read",
-    cache_path=None,  # prevents shared logins
+    cache_path=None,      # important for multi-user apps
     show_dialog=True,
 )
 
-# --- Handle redirect back from Spotify ---
+# --- Handle redirect ---
 query_params = st.query_params
 
-if "code" in query_params and st.session_state.token_info is None:
-    code = query_params["code"]
-    token_info = oauth.get_access_token(code, as_dict=True)
-    st.session_state.token_info = token_info
-
+if "code" in query_params:
+    oauth.get_access_token(query_params["code"], as_dict=True)
     st.query_params.clear()
     st.rerun()
 
-# --- Force login ---
-if st.session_state.token_info is None:
+# --- Require login ---
+token = oauth.get_cached_token()
+
+if not token:
     auth_url = oauth.get_authorize_url()
     st.markdown("## 🎧 Spotify Login Required")
     st.markdown(f"[Click here to log in with Spotify]({auth_url})")
     st.stop()
 
-# --- Refresh token if needed ---
-if oauth.is_token_expired(st.session_state.token_info):
-    st.session_state.token_info = oauth.refresh_access_token(
-        st.session_state.token_info["refresh_token"]
-    )
-
-# --- Logged in ---
-sp = spotipy.Spotify(auth=st.session_state.token_info["access_token"])
+# --- Logged in (THIS is the key change) ---
+sp = spotipy.Spotify(auth_manager=oauth)
 user = sp.current_user()
 
 st.success("✅ Logged in!")
