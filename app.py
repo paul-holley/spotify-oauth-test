@@ -1,16 +1,30 @@
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from spotipy.cache_handler import CacheHandler
+
+class StreamlitCacheHandler(CacheHandler):
+    def __init__(self, session_key="token_info"):
+        self.session_key = session_key
+
+    def get_cached_token(self):
+        return st.session_state.get(self.session_key)
+
+    def save_token_to_cache(self, token_info):
+        st.session_state[self.session_key] = token_info
+
 
 st.set_page_config(page_title="Spotify OAuth Test")
 
 # --- Create OAuth object ONCE ---
+
+cache_handler = StreamlitCacheHandler()
 oauth = SpotifyOAuth(
     client_id=st.secrets["spotify"]["SPOTIFY_CLIENT_ID"],
     client_secret=st.secrets["spotify"]["SPOTIFY_CLIENT_SECRET"],
     redirect_uri=st.secrets["spotify"]["SPOTIFY_REDIRECT_URI"],
     scope="user-top-read",
-    cache_path=None,      # important for multi-user apps
+    cache_handler=cache_handler,      # important for multi-user apps
     show_dialog=True,
 )
 
