@@ -24,6 +24,7 @@ if "token_info" not in st.session_state:
 
 cache_handler = StreamlitCacheHandler()
 
+# OAuth Object
 oauth = SpotifyOAuth(
     client_id=st.secrets["spotify"]["SPOTIFY_CLIENT_ID"],
     client_secret=st.secrets["spotify"]["SPOTIFY_CLIENT_SECRET"],
@@ -33,17 +34,12 @@ oauth = SpotifyOAuth(
     show_dialog=True,
 )
 
-# --- Handle redirect ---
-query_params = st.query_params
 
-if "code" in query_params:
-    oauth.get_access_token(query_params["code"])
-    st.query_params.clear()
-    st.rerun()
 
 # --- Require login ---
-token = oauth.get_cached_token()
+sp = spotipy.Spotify(auth_manager=oauth)
 
+token = oauth.get_cached_token()
 if not token:
     auth_url = oauth.get_authorize_url()
     st.markdown("## 🎧 Spotify Login Required")
@@ -51,7 +47,6 @@ if not token:
     st.stop()
 
 # --- Logged in (THIS is the key change) ---
-sp = spotipy.Spotify(auth_manager=oauth)
 user = sp.current_user()
 
 st.success("✅ Logged in!")
