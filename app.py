@@ -41,8 +41,7 @@ def main():
         if st.button("Log in"):
             # prevents a new tab from being opened
             st.markdown(f'<meta http-equiv="refresh" content="0; '
-                        f'url={sp.auth_manager.get_authorize_url()}"/>',
-                        unsafe_allow_html=True)
+                        f'url={sp.auth_manager.get_authorize_url()}"/>')
 
 
 def callback():
